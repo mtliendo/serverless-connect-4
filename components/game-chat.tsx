@@ -8,8 +8,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
 interface GameMessage {
-	message: string
 	player: string
+	message: string
+	timestamp?: string
 }
 
 interface GameChatProps {

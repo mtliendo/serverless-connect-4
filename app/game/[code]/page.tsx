@@ -1,15 +1,16 @@
 'use client'
 
-import { useReducer, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-
+import { events, type EventsChannel } from 'aws-amplify/data'
 import { gameReducer, ROWS, COLS, EMPTY, PLAYER1, PLAYER2 } from './GameState'
 import { Connect4Board } from '../../../components/connect4board'
 import { GameChat } from '@/components/game-chat'
 
 type GameMessage = {
-	message: string
+	timestamp?: string
 	player: string
+	message: string
 }
 
 export default function Connect4Component() {
@@ -32,10 +33,55 @@ export default function Connect4Component() {
 	const [state, dispatch] = useReducer(gameReducer, initialGameState)
 	const [messages, setMessages] = useState<GameMessage[]>([])
 
+	useEffect(() => {
+		let channel: EventsChannel
+
+		const connectAndSubscribe = async () => {
+			channel = await events.connect(`message/${gameCode}/chat`)
+
+			channel.subscribe({
+				next: (data) => {
+					console.log('received message', data)
+					const message: GameMessage = data.event
+					console.log('message', message)
+					if (message.player !== playerName) {
+						setMessages((prev) => [...prev, message])
+					}
+				},
+				error: (err) => console.error('error', err),
+			})
+		}
+
+		connectAndSubscribe()
+
+		return () => channel && channel.close()
+	}, [gameCode, playerName])
+
+	useEffect(() => {
+		let channel: EventsChannel
+
+		const connectAndSubscribe = async () => {
+			channel = await events.connect(`connect4/${gameCode}`)
+
+			channel.subscribe({
+				next: (data) => {
+					console.log('received', data)
+					dispatch({ type: 'UPDATE_GAME_STATE', newState: data.event })
+				},
+				error: (err) => console.error('error', err),
+			})
+		}
+
+		connectAndSubscribe()
+
+		return () => channel && channel.close()
+	}, [gameCode])
+
 	const handleSendMessage = async (text: string) => {
 		if (text !== '') {
-			const newMessage: GameMessage = { message: text, player: playerName }
+			const newMessage = { player: playerName, message: text }
 			setMessages((prevMessages) => [...prevMessages, newMessage])
+			await events.post(`message/${gameCode}/chat`, newMessage)
 		}
 	}
 
@@ -46,12 +92,25 @@ export default function Connect4Component() {
 			(!isCreator && state.currentPlayer !== PLAYER2)
 		)
 			return
-
+		const newState = gameReducer(state, { type: 'PLACE_PIECE', col })
 		dispatch({ type: 'PLACE_PIECE', col })
+		await events.post(`connect4/${gameCode}`, {
+			board: newState.board,
+			currentPlayer: newState.currentPlayer,
+			gameOver: newState.gameOver,
+			winner: newState.winner,
+		})
 	}
 
 	async function resetGame() {
+		const newState = gameReducer(state, { type: 'RESET_GAME' })
 		dispatch({ type: 'RESET_GAME' })
+		await events.post(`connect4/${gameCode}`, {
+			board: newState.board,
+			currentPlayer: newState.currentPlayer,
+			gameOver: newState.gameOver,
+			winner: newState.winner,
+		})
 	}
 
 	const playerColor = isCreator ? 'red' : 'yellow'
@@ -78,7 +137,7 @@ export default function Connect4Component() {
 			<div className="w-full max-w-sm border rounded-lg overflow-hidden bg-background shadow-sm min-h-screen flex flex-col">
 				<GameChat
 					currentPlayer={playerName}
-					messages={messages}
+					messages={messages as GameMessage[]}
 					onSendMessage={handleSendMessage}
 				/>
 			</div>
