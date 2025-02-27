@@ -1,8 +1,7 @@
 'use client'
 
-import { useReducer, useEffect, useState } from 'react'
+import { useReducer, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { events } from 'aws-amplify/data'
 
 import { gameReducer, ROWS, COLS, EMPTY, PLAYER1, PLAYER2 } from './GameState'
 import { Connect4Board } from '../../../components/connect4board'
@@ -33,59 +32,10 @@ export default function Connect4Component() {
 	const [state, dispatch] = useReducer(gameReducer, initialGameState)
 	const [messages, setMessages] = useState<GameMessage[]>([])
 
-	useEffect(() => {
-		const subscribeToGameChat = async (gameCode: string) => {
-			const channel = await events.connect(`/game/${gameCode}/chat`)
-			const sub = channel.subscribe({
-				next: (data) => {
-					if (data.event.player !== playerName) {
-						setMessages((prevMessages) => [
-							...prevMessages,
-							data.event as GameMessage,
-						])
-					}
-				},
-				error: (err) => console.error('uh oh spaghetti-o', err),
-			})
-			return sub
-		}
-
-		const subPromise = subscribeToGameChat(gameCode)
-		return () => {
-			Promise.resolve(subPromise).then((sub) => {
-				console.log('closing the connection')
-				sub.unsubscribe()
-			})
-		}
-	}, [gameCode, playerName])
-
-	useEffect(() => {
-		const subscribeToGameState = async (gameCode: string) => {
-			const channel = await events.connect(`/game/${gameCode}`)
-			const sub = channel.subscribe({
-				next: (data) => {
-					dispatch({ type: 'UPDATE_GAME_STATE', newState: data.event })
-				},
-				error: (err) => console.error('uh oh spaghetti-o', err),
-			})
-			return sub
-		}
-
-		const subPromise = subscribeToGameState(gameCode)
-		return () => {
-			Promise.resolve(subPromise).then((sub) => {
-				console.log('closing the connection')
-				sub.unsubscribe()
-			})
-		}
-	}, [gameCode])
-
 	const handleSendMessage = async (text: string) => {
 		if (text !== '') {
 			const newMessage: GameMessage = { message: text, player: playerName }
 			setMessages((prevMessages) => [...prevMessages, newMessage])
-
-			await events.post(`/game/${gameCode}/chat`, newMessage)
 		}
 	}
 
@@ -97,26 +47,11 @@ export default function Connect4Component() {
 		)
 			return
 
-		const newState = gameReducer(state, { type: 'PLACE_PIECE', col })
 		dispatch({ type: 'PLACE_PIECE', col })
-		await events.post(`/game/${gameCode}`, {
-			board: newState.board,
-			currentPlayer: newState.currentPlayer,
-			winner: newState.winner,
-			gameOver: newState.gameOver,
-		})
 	}
 
 	async function resetGame() {
-		const newState = gameReducer(state, { type: 'RESET_GAME' })
 		dispatch({ type: 'RESET_GAME' })
-
-		await events.post(`/game/${gameCode}`, {
-			board: newState.board,
-			currentPlayer: newState.currentPlayer,
-			winner: newState.winner,
-			gameOver: newState.gameOver,
-		})
 	}
 
 	const playerColor = isCreator ? 'red' : 'yellow'
@@ -135,6 +70,8 @@ export default function Connect4Component() {
 						playerColor={playerColor}
 						resetGame={resetGame}
 						state={state}
+						showPlayerInfo={true}
+						isLocalGame={false}
 					/>
 				</div>
 			</div>

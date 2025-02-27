@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 
 import './globals.css'
-import ConfigureAmplifyClientSide from '@/components/configureAmplify'
+import { Suspense } from 'react'
 
 const geistSans = localFont({
 	src: './fonts/GeistVF.woff',
@@ -30,8 +30,7 @@ export default function RootLayout({
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
-				<ConfigureAmplifyClientSide />
-				{children}
+				<Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
 			</body>
 		</html>
 	)

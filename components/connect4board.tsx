@@ -5,12 +5,14 @@ import { GameState, EMPTY, PLAYER1 } from '../app/game/[code]/GameState'
 import { Button } from '@/components/ui/button'
 
 type Connect4ViewProps = {
-	gameCode: string
-	playerColor: string
+	gameCode?: string
+	playerColor?: string
 	state: GameState
 	handleClick: (col: number) => void
-	isPlayerTurn: boolean
+	isPlayerTurn?: boolean
 	resetGame: () => void
+	showPlayerInfo?: boolean
+	isLocalGame?: boolean
 }
 
 export const Connect4Board = ({
@@ -20,25 +22,36 @@ export const Connect4Board = ({
 	handleClick,
 	isPlayerTurn,
 	resetGame,
+	showPlayerInfo = true,
+	isLocalGame = false,
 }: Connect4ViewProps) => {
 	const router = useRouter()
 
 	return (
 		<div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
 			<h1 className="text-4xl font-bold mb-2 text-gray-800">Connect 4</h1>
-			<h2 className="text-2xl font-semibold mb-8 text-gray-600">
-				Game Code: {gameCode}
-			</h2>
-			<p className="text-lg mb-4">
-				You are playing as{' '}
-				<span
-					className={`font-bold ${
-						playerColor === 'red' ? 'text-red-500' : 'text-yellow-500'
-					}`}
-				>
-					{playerColor}
-				</span>
-			</p>
+			{gameCode && (
+				<h2 className="text-2xl font-semibold mb-8 text-gray-600">
+					Game Code: {gameCode}
+				</h2>
+			)}
+			{isLocalGame && (
+				<h2 className="text-2xl font-semibold mb-8 text-gray-600">
+					Local Game: {state.player1Name} vs {state.player2Name}
+				</h2>
+			)}
+			{showPlayerInfo && playerColor && !isLocalGame && (
+				<p className="text-lg mb-4">
+					You are playing as{' '}
+					<span
+						className={`font-bold ${
+							playerColor === 'red' ? 'text-red-500' : 'text-yellow-500'
+						}`}
+					>
+						{playerColor}
+					</span>
+				</p>
+			)}
 			<div className="bg-blue-600 p-4 rounded-lg shadow-lg">
 				{state.board.map((row, rowIndex) => (
 					<div key={rowIndex} className="flex">
@@ -64,15 +77,29 @@ export const Connect4Board = ({
 				{!state.gameOver && (
 					<p className="text-xl font-semibold mb-4">
 						Current Player:{' '}
-						{state.currentPlayer === PLAYER1
-							? state.player1Name
-							: state.player2Name}
-						{isPlayerTurn ? ' (Your turn)' : ''}
+						<span
+							className={
+								state.currentPlayer === PLAYER1
+									? 'text-red-500'
+									: 'text-yellow-500'
+							}
+						>
+							{state.currentPlayer === PLAYER1
+								? state.player1Name
+								: state.player2Name}
+						</span>
+						{!isLocalGame && isPlayerTurn ? ' (Your turn)' : ''}
 					</p>
 				)}
 				{state.winner && (
 					<p className="text-2xl font-bold mb-4">
-						{state.winner === PLAYER1 ? state.player1Name : state.player2Name}{' '}
+						<span
+							className={
+								state.winner === PLAYER1 ? 'text-red-500' : 'text-yellow-500'
+							}
+						>
+							{state.winner === PLAYER1 ? state.player1Name : state.player2Name}
+						</span>{' '}
 						wins!
 					</p>
 				)}
@@ -81,7 +108,7 @@ export const Connect4Board = ({
 						onClick={resetGame}
 						className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-200"
 					>
-						New Game
+						Reset Game
 					</Button>
 					<Button
 						onClick={() => router.push('/')}
