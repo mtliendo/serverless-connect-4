@@ -1,5 +1,6 @@
+import { auth } from './auth/resource'
 import { defineBackend } from '@aws-amplify/backend'
-import { Expiration, Duration } from 'aws-cdk-lib'
+import { Stack } from 'aws-cdk-lib'
 import {
 	AppSyncAuthorizationType,
 	ChannelNamespace,
@@ -7,24 +8,32 @@ import {
 	EventApi,
 } from 'aws-cdk-lib/aws-appsync'
 
-const backend = defineBackend({})
-
-const connect4EventAPI = new EventApi(backend.stack, 'EventApi', {
-	apiName: 'connect-api',
-	//! I'm being explicit here to demo but the default is API_KEY, so all of this is optional
-	authorizationConfig: {
-		authProviders: [
-			{
-				authorizationType: AppSyncAuthorizationType.API_KEY,
-				apiKeyConfig: {
-					name: 'Default', //* Name of the API Key that is passed in the output below
-					description: 'Default API Key',
-					expires: Expiration.after(Duration.days(365)),
-				},
-			},
-		],
-	},
+const backend = defineBackend({
+	auth,
 })
+
+const connect4EventAPI = new EventApi(
+	Stack.of(backend.auth.stack),
+	'EventApi',
+	{
+		apiName: 'connect-api',
+		authorizationConfig: {
+			authProviders: [
+				{
+					authorizationType: AppSyncAuthorizationType.IAM,
+					cognitoConfig: {
+						userPool: backend.auth.resources.userPool,
+					},
+				},
+			],
+		},
+	}
+)
+
+connect4EventAPI.grantPublishAndSubscribe(
+	backend.auth.resources.unauthenticatedUserIamRole
+)
+connect4EventAPI.grantConnect(backend.auth.resources.unauthenticatedUserIamRole)
 
 //* This is the namespace for the connect4 game
 new ChannelNamespace(backend.stack, 'Connect4Namespace', {
@@ -57,8 +66,7 @@ backend.addOutput({
 		events: {
 			url: `https://${connect4EventAPI.httpDns}/event`,
 			aws_region: backend.stack.region,
-			default_authorization_type: AppSyncAuthorizationType.API_KEY,
-			api_key: connect4EventAPI.apiKeys['Default'].attrApiKey,
+			default_authorization_type: AppSyncAuthorizationType.IAM,
 		},
 	},
 })
