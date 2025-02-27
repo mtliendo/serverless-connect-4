@@ -19,6 +19,9 @@ export default function Connect4Component() {
 	const gameCode = params.code as string
 	const playerName = searchParams.get('player') || 'Player 1'
 	const isCreator = searchParams.get('creator') === 'true'
+
+	console.log('Game params:', { gameCode, playerName, isCreator })
+
 	const initialGameState = {
 		board: Array(ROWS)
 			.fill(null)
@@ -65,7 +68,7 @@ export default function Connect4Component() {
 
 			channel.subscribe({
 				next: (data) => {
-					console.log('received', data)
+					console.log('received game state update:', data)
 					dispatch({ type: 'UPDATE_GAME_STATE', newState: data.event })
 				},
 				error: (err) => console.error('error', err),
@@ -76,6 +79,26 @@ export default function Connect4Component() {
 
 		return () => channel && channel.close()
 	}, [gameCode])
+
+	// Share player information when joining a game
+	useEffect(() => {
+		const sharePlayerInfo = async () => {
+			try {
+				// When a player joins, share their name with the other player
+				const playerInfo = {
+					player1Name: isCreator ? playerName : state.player1Name,
+					player2Name: isCreator ? state.player2Name : playerName,
+				}
+
+				console.log('Sharing player info:', playerInfo)
+				await events.post(`connect4/${gameCode}`, playerInfo)
+			} catch (error) {
+				console.error('Error sharing player info:', error)
+			}
+		}
+
+		sharePlayerInfo()
+	}, [gameCode, isCreator, playerName, state.player1Name, state.player2Name])
 
 	const handleSendMessage = async (text: string) => {
 		if (text !== '') {
@@ -92,13 +115,27 @@ export default function Connect4Component() {
 			(!isCreator && state.currentPlayer !== PLAYER2)
 		)
 			return
+
+		console.log(
+			'Player clicked column:',
+			col,
+			'isCreator:',
+			isCreator,
+			'currentPlayer:',
+			state.currentPlayer
+		)
+
 		const newState = gameReducer(state, { type: 'PLACE_PIECE', col })
 		dispatch({ type: 'PLACE_PIECE', col })
+
+		// Include player names in the update to ensure they're preserved
 		await events.post(`connect4/${gameCode}`, {
 			board: newState.board,
 			currentPlayer: newState.currentPlayer,
 			gameOver: newState.gameOver,
 			winner: newState.winner,
+			player1Name: newState.player1Name,
+			player2Name: newState.player2Name,
 		})
 	}
 
@@ -110,6 +147,8 @@ export default function Connect4Component() {
 			currentPlayer: newState.currentPlayer,
 			gameOver: newState.gameOver,
 			winner: newState.winner,
+			player1Name: newState.player1Name,
+			player2Name: newState.player2Name,
 		})
 	}
 

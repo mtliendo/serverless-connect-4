@@ -20,10 +20,13 @@ const connect4EventAPI = new EventApi(
 		authorizationConfig: {
 			authProviders: [
 				{
-					authorizationType: AppSyncAuthorizationType.IAM,
+					authorizationType: AppSyncAuthorizationType.USER_POOL,
 					cognitoConfig: {
 						userPool: backend.auth.resources.userPool,
 					},
+				},
+				{
+					authorizationType: AppSyncAuthorizationType.IAM,
 				},
 			],
 		},
@@ -31,9 +34,9 @@ const connect4EventAPI = new EventApi(
 )
 
 connect4EventAPI.grantPublishAndSubscribe(
-	backend.auth.resources.unauthenticatedUserIamRole
+	backend.auth.resources.authenticatedUserIamRole
 )
-connect4EventAPI.grantConnect(backend.auth.resources.unauthenticatedUserIamRole)
+connect4EventAPI.grantConnect(backend.auth.resources.authenticatedUserIamRole)
 
 //* This is the namespace for the connect4 game
 new ChannelNamespace(backend.stack, 'Connect4Namespace', {

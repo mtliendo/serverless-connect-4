@@ -6,6 +6,15 @@ import { defineAuth } from '@aws-amplify/backend'
  */
 export const auth = defineAuth({
 	loginWith: {
-		email: true,
+		email: {
+			verificationEmailSubject: 'Confirm your Connect 4 account',
+			verificationEmailBody: (createCode: () => string) =>
+				`Welcome to Connect 4! Your verification code is ${createCode()}`,
+		},
+	},
+	userAttributes: {
+		nickname: {
+			required: true,
+		},
 	},
 })

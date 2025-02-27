@@ -41,16 +41,28 @@ export const Connect4Board = ({
 				</h2>
 			)}
 			{showPlayerInfo && playerColor && !isLocalGame && (
-				<p className="text-lg mb-4">
-					You are playing as{' '}
-					<span
-						className={`font-bold ${
-							playerColor === 'red' ? 'text-red-500' : 'text-yellow-500'
-						}`}
-					>
-						{playerColor}
-					</span>
-				</p>
+				<>
+					<p className="text-lg mb-2">
+						You are playing as{' '}
+						<span
+							className={`font-bold ${
+								playerColor === 'red' ? 'text-red-500' : 'text-yellow-500'
+							}`}
+						>
+							{playerColor}
+						</span>
+					</p>
+					<div className="mb-4 text-center">
+						<p className="text-md">
+							<span className="text-red-500 font-semibold">Red:</span>{' '}
+							{state.player1Name}
+						</p>
+						<p className="text-md">
+							<span className="text-yellow-500 font-semibold">Yellow:</span>{' '}
+							{state.player2Name}
+						</p>
+					</div>
+				</>
 			)}
 			<div className="bg-blue-600 p-4 rounded-lg shadow-lg">
 				{state.board.map((row, rowIndex) => (
